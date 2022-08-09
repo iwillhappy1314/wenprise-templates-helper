@@ -13,7 +13,7 @@
     "require": {},
     "autoload": {
         "files": [
-            "src/templates-helpers.php"
+            "src/WenpriseTemplateHelper.php"
         ]
     }
 }

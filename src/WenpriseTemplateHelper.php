@@ -180,6 +180,10 @@ class WenpriseTemplateHelper
                 $template = $default_path . $cs_template;
             }
         }
+        
+        if ( ! file_exists($template)) {
+            $template = get_theme_file_path('index.php');
+        }
 
         // Return what we found.
         return apply_filters('wenprise_locate_template', $template, $template_name, $template_path);

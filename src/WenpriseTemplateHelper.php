@@ -1,10 +1,13 @@
 <?php
 
-class WenpriseTemplateHelper
+namespace Wenprise;
+
+class TemplateHelper
 {
-    public function __construct($template_path = 'wenprise', $default_path = '') {
+    public function __construct($template_path = 'wenprise', $default_paths = '')
+    {
         $this->template_path = $template_path;
-        $this->default_path = $default_path;
+        $this->default_paths = $default_paths;
     }
 
     /**
@@ -18,7 +21,7 @@ class WenpriseTemplateHelper
      */
     function tokenize_path($path, $path_tokens)
     {
-        // Order most to least specific so that the token can encompass as much of the path as possible.
+        // Order most to at least specific so that the token can encompass as much of the path as possible.
         uasort(
             $path_tokens,
             function ($a, $b)
@@ -117,6 +120,7 @@ class WenpriseTemplateHelper
         wp_cache_set('cached_templates', $cached_templates, 'wenprise');
     }
 
+
     /**
      * Clear the template cache.
      *
@@ -134,6 +138,7 @@ class WenpriseTemplateHelper
         }
     }
 
+
     /**
      * Locate a template and return the path for inclusion.
      *
@@ -150,7 +155,7 @@ class WenpriseTemplateHelper
     function locate_template($template_name)
     {
         $template_path = $this->template_path;
-        $default_path = $this->default_path;
+        $default_paths = $this->default_paths;
 
         // Look within passed path within the theme - this is priority.
         if (false !== strpos($template_name, 'product_cat') || false !== strpos($template_name, 'product_tag')) {
@@ -161,6 +166,7 @@ class WenpriseTemplateHelper
                     $cs_template,
                 ]
             );
+
         }
 
         if (empty($template)) {
@@ -175,18 +181,39 @@ class WenpriseTemplateHelper
         // Get default template/.
         if ( ! $template) {
             if (empty($cs_template)) {
-                $template = $default_path . $template_name;
+                $template = $this->locate_default_template($template_name, $default_paths);
+
             } else {
-                $template = $default_path . $cs_template;
+                $template = $this->locate_default_template($cs_template, $default_paths);
             }
         }
-        
-        if ( ! file_exists($template)) {
-            $template = get_theme_file_path('index.php');
-        }
+
+        // dd($template);
 
         // Return what we found.
         return apply_filters('wenprise_locate_template', $template, $template_name, $template_path);
+    }
+
+
+    /**
+     * 定位默认模版
+     *
+     * @param $template
+     * @param $paths
+     *
+     * @return false|string
+     */
+    function locate_default_template($template, $paths)
+    {
+        foreach ($paths as $path) {
+            $template_path = $path . '/' . $template;
+
+            if (file_exists($template_path)) {
+                return $template_path;
+            }
+        }
+
+        return false;
     }
 
 
@@ -199,13 +226,13 @@ class WenpriseTemplateHelper
     function get_template($template_name, $args = [])
     {
         $template_path = $this->template_path;
-        $default_path = $this->default_path;
+        $default_paths = (array)$this->default_paths;
 
-        $cache_key = sanitize_key(implode('-', ['template', $template_name, $template_path, $default_path, 1.0]));
+        $cache_key = sanitize_key(implode('-', ['template', $template_name, $template_path, implode('_', $default_paths), 1.0]));
         $template  = (string)wp_cache_get($cache_key, 'wenprise');
 
         if ( ! $template) {
-            $template = $this->locate_template($template_name, $template_path, $default_path);
+            $template = $this->locate_template($template_name);
 
             // Don't cache the absolute path so that it can be shared between web servers with different paths.
             $cache_path = $this->tokenize_path($template, $this->get_path_define_tokens());
@@ -217,7 +244,7 @@ class WenpriseTemplateHelper
         }
 
         // Allow 3rd party plugin filter template file from their plugin.
-        $filter_template = apply_filters('wprs_get_template', $template, $template_name, $args, $template_path, $default_path);
+        $filter_template = apply_filters('wprs_get_template', $template, $template_name, $args, $template_path, $default_paths);
 
         if ($filter_template !== $template) {
             if ( ! file_exists($filter_template)) {

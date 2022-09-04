@@ -7,7 +7,7 @@ class TemplateHelper
     public function __construct($template_path = 'wenprise', $default_paths = [])
     {
         $this->template_path = $template_path;
-        $this->default_paths = $default_paths;
+        $this->default_paths = (array)$default_paths;
     }
 
     /**

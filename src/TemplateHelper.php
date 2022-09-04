@@ -4,7 +4,7 @@ namespace Wenprise;
 
 class TemplateHelper
 {
-    public function __construct($template_path = 'wenprise', $default_paths = '')
+    public function __construct($template_path = 'wenprise', $default_paths = [])
     {
         $this->template_path = $template_path;
         $this->default_paths = $default_paths;

@@ -166,7 +166,6 @@ class TemplateHelper
                     $cs_template,
                 ]
             );
-
         }
 
         if (empty($template)) {
@@ -181,14 +180,11 @@ class TemplateHelper
         // Get default template/.
         if ( ! $template) {
             if (empty($cs_template)) {
-                $template = $this->locate_default_template($template_name, $default_paths);
-
+                $template = $this->locate_default_template($template_name, [$default_paths]);
             } else {
-                $template = $this->locate_default_template($cs_template, $default_paths);
+                $template = $this->locate_default_template($cs_template, [$default_paths]);
             }
         }
-
-        // dd($template);
 
         // Return what we found.
         return apply_filters('wenprise_locate_template', $template, $template_name, $template_path);
@@ -206,7 +202,7 @@ class TemplateHelper
     function locate_default_template($template, $paths)
     {
         foreach ($paths as $path) {
-            $template_path = $path . '/' . $template;
+            $template_path = $path . $template;
 
             if (file_exists($template_path)) {
                 return $template_path;

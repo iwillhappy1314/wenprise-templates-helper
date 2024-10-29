@@ -202,7 +202,7 @@ class TemplateHelper
     function locate_default_template($template, $paths)
     {
         foreach ($paths as $path) {
-            $template_path = $path . '/' . trim('/',$template);
+            $template_path = $path . '/' . ltrim($template, '/');
 
             if (file_exists($template_path)) {
                 return $template_path;

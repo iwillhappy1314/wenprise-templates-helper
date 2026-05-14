@@ -25,6 +25,12 @@ class TemplateHelper
      */
     function tokenize_path($path, $path_tokens)
     {
+        if (empty($path) || ! is_string($path)) {
+            return $path;
+        }
+
+        $path = wp_normalize_path($path);
+
         // Order most to at least specific so that the token can encompass as much of the path as possible.
         uasort(
             $path_tokens,
@@ -46,7 +52,9 @@ class TemplateHelper
         );
 
         foreach ($path_tokens as $token => $token_path) {
-            if (0 !== strpos($path, $token_path)) {
+            $token_path = wp_normalize_path($token_path);
+
+            if (empty($token_path) || 0 !== strpos($path, $token_path)) {
                 continue;
             }
 
@@ -93,7 +101,7 @@ class TemplateHelper
 
         $path_tokens = [];
         foreach ($defines as $define) {
-            if (defined($define)) {
+            if (defined($define) && ! empty(constant($define))) {
                 $path_tokens[ $define ] = constant($define);
             }
         }
@@ -160,33 +168,47 @@ class TemplateHelper
     {
         $template_path = $this->template_path;
         $default_paths = $this->default_paths;
+        $template      = '';
 
-        // Look within passed path within the theme - this is priority.
-        if (false !== strpos($template_name, 'product_cat') || false !== strpos($template_name, 'product_tag')) {
-            $cs_template = str_replace('_', '-', $template_name);
-            $template    = locate_template(
-                [
-                    trailingslashit($template_path) . $cs_template,
-                    $cs_template,
-                ]
-            );
+        // Handle both string and array for template name
+        $template_names = (array)$template_name;
+
+        // Create hyphenated versions for product cat/tag
+        $cs_names = [];
+        foreach ($template_names as $name) {
+            if (is_string($name) && (false !== strpos($name, 'product_cat') || false !== strpos($name, 'product_tag'))) {
+                $cs_names[] = str_replace('_', '-', $name);
+            }
+        }
+
+        if ( ! empty($cs_names)) {
+            $locate_cs_names = [];
+            foreach ($cs_names as $cs_name) {
+                $locate_cs_names[] = trailingslashit($template_path) . $cs_name;
+                $locate_cs_names[] = $cs_name;
+            }
+
+            $template = locate_template($locate_cs_names);
         }
 
         if (empty($template)) {
-            $template = locate_template(
-                [
-                    trailingslashit($template_path) . $template_name,
-                    $template_name,
-                ]
-            );
+            $locate_names = [];
+            foreach ($template_names as $name) {
+                $locate_names[] = trailingslashit($template_path) . $name;
+                $locate_names[] = $name;
+            }
+
+            $template = locate_template($locate_names);
         }
 
         // Get default template/.
         if ( ! $template) {
-            if (empty($cs_template)) {
-                $template = $this->locate_default_template($template_name, (array)$default_paths);
-            } else {
-                $template = $this->locate_default_template($cs_template, (array)$default_paths);
+            if ( ! empty($cs_names)) {
+                $template = $this->locate_default_template($cs_names, (array)$default_paths);
+            }
+
+            if ( ! $template) {
+                $template = $this->locate_default_template($template_names, (array)$default_paths);
             }
         }
 
@@ -205,11 +227,15 @@ class TemplateHelper
      */
     function locate_default_template($template, $paths)
     {
-        foreach ($paths as $path) {
-            $template_path = $path . '/' . ltrim($template, '/');
+        $templates = (array)$template;
 
-            if (file_exists($template_path)) {
-                return $template_path;
+        foreach ($paths as $path) {
+            foreach ($templates as $t) {
+                $template_path = wp_normalize_path($path . '/' . ltrim($t, '/'));
+
+                if (file_exists($template_path)) {
+                    return $template_path;
+                }
             }
         }
 
@@ -228,7 +254,7 @@ class TemplateHelper
         $template_path = $this->template_path;
         $default_paths = (array)$this->default_paths;
 
-        $cache_key = sanitize_key(implode('-', ['template', $template_name, $template_path, implode('_', $default_paths), 1.0]));
+        $cache_key = 'wprs_tpl_' . md5(serialize([$template_name, $template_path, $default_paths, '1.1']));
         $template  = (string)wp_cache_get($cache_key, 'wenprise');
 
         if ( ! $template) {
@@ -277,7 +303,9 @@ class TemplateHelper
 
         do_action('wenprise_before_template_part', $action_args[ 'template_name' ], $action_args[ 'template_path' ], $action_args[ 'located' ], $action_args[ 'args' ]);
 
-        include $action_args[ 'located' ];
+        if ( ! empty($action_args[ 'located' ]) && file_exists($action_args[ 'located' ])) {
+            include $action_args[ 'located' ];
+        }
 
         do_action('wenprise_after_template_part', $action_args[ 'template_name' ], $action_args[ 'template_path' ], $action_args[ 'located' ], $action_args[ 'args' ]);
     }
